@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 
 import torch
 import whisper
@@ -114,6 +115,7 @@ def main() -> None:
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         audio_path = tmp.name
 
+    start_time = time.time()
     try:
         extract_audio(args.video, audio_path)
         result = transcribe_audio(audio_path, model_name=args.model,
@@ -123,7 +125,8 @@ def main() -> None:
         if os.path.exists(audio_path):
             os.remove(audio_path)
 
-    print("Done.")
+    elapsed = time.time() - start_time
+    print(f"Done. Time elapsed: {elapsed:.1f}s")
 
 
 if __name__ == "__main__":

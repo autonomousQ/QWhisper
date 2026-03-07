@@ -19,14 +19,15 @@ Supported formats: `.mp4`, `.mov`, `.mkv`, `.avi`
 - Simple command-line interface
 - Works directly with video files
 - Outputs clean `.txt` transcript
+- Displays elapsed transcription time
 
 ---
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.13+
 - CUDA-compatible NVIDIA GPU (recommended)
-- FFmpeg installed
+- FFmpeg installed and added to PATH
 - PyTorch with CUDA
 
 ---
@@ -57,9 +58,9 @@ Install Whisper directly from GitHub:
 pip install git+https://github.com/openai/whisper.git
 ```
 
-Install PyTorch with CUDA support (example for CUDA 12):
+Install PyTorch with CUDA support (CUDA 12.4 for Python 3.13):
 ```bash
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install torch --index-url https://download.pytorch.org/whl/cu124
 ```
 
 ---
