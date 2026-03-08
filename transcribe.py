@@ -91,9 +91,15 @@ def main() -> None:
     parser.add_argument(
         "--language",
         default=None,
-        help="Language of the audio (e.g. 'en', 'Chinese'). Auto-detected if omitted.",
+        help="Language of the audio (e.g. 'en', 'Chinese'). Only used with large/turbo models. Auto-detected if omitted.",
     )
     args = parser.parse_args()
+
+    # --language is only supported by large and turbo models
+    large_models = {"large", "large-v2", "large-v3", "turbo"}
+    if args.language and args.model not in large_models:
+        print(f"Warning: --language is only supported for large/turbo models. Ignoring for model '{args.model}'.")
+        args.language = None
 
     # Select device
     device = "cuda" if torch.cuda.is_available() else "cpu"

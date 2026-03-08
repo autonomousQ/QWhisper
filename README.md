@@ -98,6 +98,9 @@ python transcribe.py lecture.mp4 --model medium
 | small  | Medium   | Better   | Recommended  |
 | medium | Slower   | High     | Recommended  |
 | large  | Slowest  | Best     | Strongly recommended |
+| turbo  | Fast     | High     | Strongly recommended |
+
+> **Note:** `--language` is only available for `large` and `turbo` models. It is ignored for all other models.
 
 ---
 
