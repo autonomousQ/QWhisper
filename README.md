@@ -53,14 +53,8 @@ sudo apt install ffmpeg
 
 ### 2. Install Python packages
 
-Install Whisper directly from GitHub:
 ```bash
-pip install git+https://github.com/openai/whisper.git
-```
-
-Install PyTorch with CUDA support (CUDA 12.4 for Python 3.13):
-```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu124
+pip install -r requirements.txt
 ```
 
 ---
@@ -71,8 +65,11 @@ pip install torch --index-url https://download.pytorch.org/whl/cu124
 whisper-video-transcriber/
 │
 ├── transcribe.py
+├── requirements.txt
 ├── README.md
-└── videos/
+├── video1.mp4
+├── audio1.mp3
+└── ...
 ```
 
 ---
