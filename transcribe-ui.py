@@ -11,6 +11,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+import webbrowser
 import tkinter as tk
 from tkinter import filedialog, ttk, scrolledtext
 
@@ -182,7 +183,13 @@ class App(tk.Tk):
                 )
             mb.pack(fill="x", pady=(0, 4))
 
-        # --- Middle: model + language + transcribe + clear on one row ---
+        # --- Middle: full-width status log ---
+        self.log_box = scrolledtext.ScrolledText(
+            self, wrap="word", state="disabled",
+        )
+        self.log_box.pack(fill="both", expand=True, padx=10, pady=(4, 4))
+
+        # --- Bottom: model + language + credit + clear + transcribe ---
         opt_frame = tk.Frame(self)
         opt_frame.pack(fill="x", **pad)
 
@@ -206,12 +213,61 @@ class App(tk.Tk):
             command=self._start, bg="#1a73e8", fg="white",
         )
         self.run_btn.pack(side="right", padx=(0, 8))
+        tk.Button(
+            opt_frame, text="Credit", width=8, command=self._show_credit,
+        ).pack(side="right", padx=(0, 8))
 
-        # --- Bottom: full-width status log ---
-        self.log_box = scrolledtext.ScrolledText(
-            self, wrap="word", state="disabled",
-        )
-        self.log_box.pack(fill="both", expand=True, padx=10, pady=(4, 10))
+    # ------------------------------------------------------------------
+    def _show_credit(self):
+        dlg = tk.Toplevel(self)
+        dlg.title("About Whisper Transcription")
+        dlg.resizable(False, False)
+        dlg.grab_set()
+
+        self.update_idletasks()
+        w, h = 360, 400
+        x = self.winfo_x() + (self.winfo_width() - w) // 2
+        y = self.winfo_y() + (self.winfo_height() - h) // 2
+        dlg.geometry(f"{w}x{h}+{x}+{y}")
+
+        f = tk.Frame(dlg, padx=24, pady=20)
+        f.pack(fill="both", expand=True)
+
+        tk.Label(f, text="Whisper Transcription",
+                 font=("", 16, "bold")).pack()
+        tk.Label(f, text="Version 260320A",
+                 font=("", 10), fg="#666666").pack(pady=(2, 10))
+
+        ttk.Separator(f, orient="horizontal").pack(fill="x", pady=(0, 10))
+
+        tk.Label(f, text="This software is distributed under the\n"
+                 "GNU General Public License v3.0 (GPL-3.0).",
+                 justify="center", wraplength=300).pack()
+
+        links_frame = tk.Frame(f)
+        links_frame.pack(pady=(8, 0))
+        for text, url in [
+            ("View License", "https://www.gnu.org/licenses/gpl-3.0.en.html"),
+            ("GitHub Repo",  "https://github.com/tommykho/whisper"),
+        ]:
+            lbl = tk.Label(links_frame, text=text, fg="#0078d4", cursor="hand2")
+            lbl.pack(side="left", padx=16)
+            lbl.bind("<Button-1>", lambda e, u=url: webbrowser.open(u))
+            lbl.bind("<Enter>", lambda e, l=lbl: l.config(font=("", 10, "underline")))
+            lbl.bind("<Leave>", lambda e, l=lbl: l.config(font=("", 10)))
+
+        ttk.Separator(f, orient="horizontal").pack(fill="x", pady=12)
+
+        tk.Label(f, text="If you find this useful, consider buying me a coffee!",
+                 justify="center", wraplength=300).pack()
+        tk.Button(
+            f, text="Donate via PayPal \u2665",
+            command=lambda: webbrowser.open("https://paypal.me/tommykho"),
+        ).pack(pady=(10, 0))
+
+        ttk.Separator(f, orient="horizontal").pack(fill="x", pady=12)
+
+        tk.Button(f, text="Close", width=12, command=dlg.destroy).pack()
 
     # ------------------------------------------------------------------
     def _get_input_lines(self) -> list[str]:

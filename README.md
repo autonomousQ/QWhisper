@@ -25,9 +25,11 @@ Supported formats: `.mp4`, `.mov`, `.mkv`, `.avi`, `.mp3`, `.wav`, `.m4a`, `.fla
 - Batch processing — transcribe multiple files in one command
 - Supports both audio and video files
 - CUDA GPU acceleration (automatically falls back to CPU if unavailable)
-- Simple command-line interface
+- Simple command-line interface and desktop GUI (`transcribe-ui.py`)
 - Outputs clean `.txt` transcript per file
 - Displays elapsed transcription time
+- GUI: quality-aware video/audio extraction via yt-dlp dropdown menus
+- GUI: About/Credit modal with license info and donation link
 
 ---
 
@@ -76,19 +78,29 @@ pip install -r requirements.txt
 ## Project Structure
 
 ```
-whisper-video-transcriber/
-│
-├── transcribe.py
+whisper/
+├── transcribe.py        # CLI script
+├── transcribe-ui.py     # Desktop GUI (tkinter)
 ├── requirements.txt
-├── README.md
-├── video1.mp4
-├── audio1.mp3
-└── ...
+└── README.md
 ```
 
 ---
 
 ## Usage
+
+### Desktop GUI
+
+```bash
+python transcribe-ui.py
+```
+
+- Paste file paths or URLs into the input box (one per line), or click **Browse…**
+- Use the **Extract MP4 ▼ / WEBM ▼ / MP3 ▼** dropdown buttons to download media at a chosen quality via yt-dlp
+- Select model and language, then click **Transcribe**
+- Click **Credit** for version info, license, and donation link
+
+### Command Line
 
 ```bash
 python transcribe.py <file> [file ...] [--model MODEL] [--language LANGUAGE]
