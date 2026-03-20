@@ -45,10 +45,11 @@ def run_with_timer(fn, prefix: str, done_text: str = "Done"):
     return result
 
 
-def type_text(text: str, delay: float = 0.01) -> None:
-    """Print text character by character."""
-    for char in text:
-        sys.stdout.write(char)
+def type_text(text: str, delay: float = 0.05) -> None:
+    """Print text word by word."""
+    words = text.split(" ")
+    for i, word in enumerate(words):
+        sys.stdout.write(word + (" " if i < len(words) - 1 else ""))
         sys.stdout.flush()
         time.sleep(delay)
     sys.stdout.write("\n")
@@ -135,11 +136,9 @@ def main() -> None:
     print(f"> Device: {device_label}")
 
     # Load model
-    model = run_with_timer(
-        lambda: whisper.load_model(args.model, device=device),
-        prefix=f"> Loading model '{args.model}' (downloads if needed)... ",
-        done_text="Model ready.",
-    )
+    print(f"> Loading model '{args.model}' (downloads if needed)... ", end="", flush=True)
+    model = whisper.load_model(args.model, device=device)
+    print("Model ready.")
 
     start_time = time.time()
 

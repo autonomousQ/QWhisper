@@ -78,6 +78,7 @@ class App(tk.Tk):
         self.title("Whisper Transcription")
         self.resizable(True, True)
         self.minsize(640, 480)
+        self._timer_index = None  # text index where live status value starts
         self._build_ui()
 
     def _build_ui(self):
@@ -172,21 +173,21 @@ class App(tk.Tk):
         self.after(0, _write)
 
     def _log_inline(self, msg: str):
-        """Append text without a trailing newline, set mark for later updates."""
+        """Append text without a trailing newline; record index for later updates."""
         def _write():
             self.log_box.config(state="normal")
             self.log_box.insert("end", msg)
-            self.log_box.mark_set("status_val", "end")
-            self.log_box.mark_gravity("status_val", "left")
+            self._timer_index = self.log_box.index("end")
             self.log_box.see("end")
             self.log_box.config(state="disabled")
         self.after(0, _write)
 
     def _log_update_inline(self, val: str):
-        """Overwrite the value portion after the status_val mark (no newline)."""
+        """Overwrite everything after the recorded index (no newline)."""
         def _write():
             self.log_box.config(state="normal")
-            self.log_box.delete("status_val", "end")
+            if self._timer_index:
+                self.log_box.delete(self._timer_index, "end")
             self.log_box.insert("end", val)
             self.log_box.see("end")
             self.log_box.config(state="disabled")
@@ -196,8 +197,10 @@ class App(tk.Tk):
         """Finalize the inline status line with val and a newline."""
         def _write():
             self.log_box.config(state="normal")
-            self.log_box.delete("status_val", "end")
+            if self._timer_index:
+                self.log_box.delete(self._timer_index, "end")
             self.log_box.insert("end", val + "\n")
+            self._timer_index = None
             self.log_box.see("end")
             self.log_box.config(state="disabled")
         self.after(0, _write)
@@ -228,27 +231,29 @@ class App(tk.Tk):
         self._log_finish_inline(done_text)
         return result
 
-    def _type_text(self, text: str, delay: int = 10):
+    def _type_text(self, text: str, delay: int = 60):
         """
-        Type text character-by-character into the log box.
+        Type text word-by-word into the log box.
         Blocks the calling (worker) thread until typing is complete.
         """
         done_event = threading.Event()
+        words = text.split(" ")
 
-        def _type_char(i=0):
+        def _type_word(i=0):
             self.log_box.config(state="normal")
-            if i < len(text):
-                self.log_box.insert("end", text[i])
+            if i < len(words):
+                chunk = words[i] + (" " if i < len(words) - 1 else "")
+                self.log_box.insert("end", chunk)
                 self.log_box.see("end")
                 self.log_box.config(state="disabled")
-                self.after(delay, lambda: _type_char(i + 1))
+                self.after(delay, lambda: _type_word(i + 1))
             else:
                 self.log_box.insert("end", "\n")
                 self.log_box.see("end")
                 self.log_box.config(state="disabled")
                 done_event.set()
 
-        self.after(0, _type_char)
+        self.after(0, _type_word)
         done_event.wait()
 
     # ------------------------------------------------------------------
