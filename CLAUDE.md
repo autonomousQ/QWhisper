@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Python script that transcribes audio and video files to text using OpenAI's Whisper model with CUDA GPU acceleration. Supports batch processing of multiple files.
+CLI and desktop GUI (tkinter) that transcribe audio and video files to text using OpenAI's Whisper model with CUDA GPU acceleration. Supports batch processing of multiple files and URL-based media extraction via yt-dlp.
 
 ## Setup
 
@@ -24,7 +24,24 @@ sudo apt install ffmpeg
 winget install ffmpeg
 ```
 
-## Running the Script
+## Running the Desktop GUI
+
+```bash
+python transcribe-ui.py
+```
+
+**Layout (top → bottom):**
+1. Input box (file paths / URLs, one per line) + Browse / Extract buttons on the right
+2. Status log window (scrollable)
+3. Controls row: Model | Language | Credit | Clear | Transcribe
+
+**Extract buttons** are `tk.Menubutton` dropdowns:
+- Extract MP4 ▼ / Extract WEBM ▼ — quality: Best, 1080p, 720p, 480p, 360p
+- Extract MP3 ▼ — quality: Best, 320k, 192k, 128k
+
+**Credit button** opens a modal (About dialog) with version, GPL-3.0 license links, and PayPal donation button.
+
+## Running the CLI Script
 
 ```bash
 python transcribe.py <file> [file ...] [--model MODEL] [--language LANGUAGE]
@@ -63,7 +80,8 @@ Default model: `base`
 
 ## Key Files
 
-- `transcribe.py` — main script
+- `transcribe.py` — CLI transcription script
+- `transcribe-ui.py` — desktop GUI (tkinter)
 - `requirements.txt` — Python dependencies
 - `.claude/hooks/session-start.sh` — installs dependencies on session start (remote only)
 - `.claude/settings.json` — Claude Code hook configuration
@@ -78,3 +96,4 @@ Default model: `base`
 - Output is saved as `<input_name>.txt` next to each input file
 - Elapsed time is printed at the end of the run
 - `.mp4` files and `.env` are excluded from git via `.gitignore`
+- GUI version string follows `YYMMDD` + revision letter format (e.g. `260320A`)
