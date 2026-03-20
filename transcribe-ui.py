@@ -5,10 +5,12 @@ Run with: python transcribe-ui.py
 """
 
 import os
+import sys
 import tempfile
 import threading
 import time
 import urllib.parse
+import urllib.request
 import tkinter as tk
 from tkinter import filedialog, ttk, scrolledtext
 
@@ -38,12 +40,43 @@ def url_to_filename(url: str) -> str:
     return encoded[-12:] + ".txt"
 
 
+_DIRECT_EXTS = {
+    ".mp3", ".mp4", ".wav", ".m4a", ".mkv", ".avi", ".mov",
+    ".flac", ".ogg", ".opus", ".webm", ".aac", ".wma",
+}
+
+
+def _is_direct_url(url: str) -> bool:
+    """Return True if the URL points directly to an audio/video file."""
+    path = urllib.parse.urlparse(url).path
+    _, ext = os.path.splitext(path)
+    return ext.lower() in _DIRECT_EXTS
+
+
+def _direct_download(url: str, log) -> str | None:
+    """Download a direct audio/video URL with urllib and return the local path."""
+    path = urllib.parse.urlparse(url).path
+    filename = os.path.basename(path) or "download"
+    dest = os.path.join(os.getcwd(), filename)
+    log(f"Downloading {filename}...")
+    try:
+        urllib.request.urlretrieve(url, dest)
+    except Exception as exc:
+        log(f"Download error: {exc}")
+        return None
+    return dest
+
+
 def _yt_download(url: str, audio_only: bool, log) -> str | None:
     """
-    Download video or audio-only from a URL via yt-dlp.
-    Saves to CWD and returns the resulting file path, or None on failure.
+    Download video or audio-only from a URL.
+    Direct file URLs are fetched with urllib; everything else uses yt-dlp.
+    Returns the local file path, or None on failure.
     """
     import subprocess
+
+    if _is_direct_url(url):
+        return _direct_download(url, log)
 
     kind = "audio" if audio_only else "video"
     log(f"Extracting {kind} from URL...")
@@ -51,11 +84,21 @@ def _yt_download(url: str, audio_only: bool, log) -> str | None:
     tmpdir = tempfile.mkdtemp()
     out_template = os.path.join(tmpdir, "%(title)s.%(ext)s")
 
-    cmd = ["yt-dlp", "-o", out_template, "--no-playlist", url]
+    base_args = ["-o", out_template, "--no-playlist", url]
     if audio_only:
-        cmd += ["--extract-audio", "--audio-format", "mp3"]
+        base_args += ["--extract-audio", "--audio-format", "mp3"]
 
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # Try yt-dlp executable first, fall back to python -m yt_dlp
+    for cmd in (["yt-dlp"] + base_args, [sys.executable, "-m", "yt_dlp"] + base_args):
+        try:
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            break
+        except FileNotFoundError:
+            continue
+    else:
+        log("Error: yt-dlp is not installed. Run: pip install yt-dlp")
+        return None
+
     if result.returncode != 0:
         log("yt-dlp error:\n" + result.stderr.decode())
         return None
