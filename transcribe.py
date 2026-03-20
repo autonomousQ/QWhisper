@@ -45,7 +45,7 @@ def run_with_timer(fn, prefix: str, done_text: str = "Done"):
     return result
 
 
-def type_text(text: str, delay: float = 0.05) -> None:
+def type_text(text: str, delay: float = 0.01) -> None:
     """Print text word by word."""
     words = text.split(" ")
     for i, word in enumerate(words):

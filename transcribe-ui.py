@@ -373,7 +373,7 @@ class App(tk.Tk):
         self._log_finish_inline(done_text)
         return result
 
-    def _type_text(self, text: str, delay: int = 60):
+    def _type_text(self, text: str, delay: float = 0.01):
         done_event = threading.Event()
         words = text.split(" ")
 
@@ -384,7 +384,7 @@ class App(tk.Tk):
                 self.log_box.insert("end", chunk)
                 self.log_box.see("end")
                 self.log_box.config(state="disabled")
-                self.after(delay, lambda: _type_word(i + 1))
+                self.after(int(delay * 1000), lambda: _type_word(i + 1))
             else:
                 self.log_box.insert("end", "\n")
                 self.log_box.see("end")
