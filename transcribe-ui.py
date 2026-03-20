@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
 Whisper Audio/Video Transcription — Desktop UI
-Run with: python app.py
+Run with: python transcribe-ui.py
 """
 
 import os
-import sys
 import tempfile
 import threading
 import urllib.parse
@@ -38,19 +37,38 @@ def url_to_filename(url: str) -> str:
     return encoded[-12:] + ".txt"
 
 
-def download_url(url: str, dest_path: str, log) -> bool:
-    """Download a media file from a URL using yt-dlp."""
+def _yt_download(url: str, audio_only: bool, log) -> str | None:
+    """
+    Download video or audio-only from a URL via yt-dlp.
+    Saves to CWD and returns the resulting file path, or None on failure.
+    """
     import subprocess
-    log(f"Downloading '{url}'...")
-    result = subprocess.run(
-        ["yt-dlp", "-o", dest_path, "--no-playlist", url],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+
+    kind = "audio" if audio_only else "video"
+    log(f"Extracting {kind} from URL...")
+
+    tmpdir = tempfile.mkdtemp()
+    out_template = os.path.join(tmpdir, "%(title)s.%(ext)s")
+
+    cmd = ["yt-dlp", "-o", out_template, "--no-playlist", url]
+    if audio_only:
+        cmd += ["--extract-audio", "--audio-format", "mp3"]
+
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
-        log("Download error:\n" + result.stderr.decode())
-        return False
-    return True
+        log("yt-dlp error:\n" + result.stderr.decode())
+        return None
+
+    files = os.listdir(tmpdir)
+    if not files:
+        log("Error: yt-dlp produced no output file.")
+        return None
+
+    src = os.path.join(tmpdir, files[0])
+    dest = os.path.join(os.getcwd(), files[0])
+    os.rename(src, dest)
+    os.rmdir(tmpdir)
+    return dest
 
 
 class App(tk.Tk):
@@ -58,7 +76,7 @@ class App(tk.Tk):
         super().__init__()
         self.title("Whisper Transcription")
         self.resizable(True, True)
-        self.minsize(600, 460)
+        self.minsize(640, 480)
         self._build_ui()
 
     def _build_ui(self):
@@ -77,7 +95,15 @@ class App(tk.Tk):
         url_frame.pack(fill="x", **pad)
         tk.Label(url_frame, text="URL:", width=8, anchor="w").pack(side="left")
         self.url_entry = tk.Entry(url_frame)
-        self.url_entry.pack(side="left", fill="x", expand=True)
+        self.url_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        tk.Button(
+            url_frame, text="Extract Video \U0001f53b",
+            command=self._extract_video,
+        ).pack(side="left", padx=(0, 4))
+        tk.Button(
+            url_frame, text="Extract Audio \U0001f53b",
+            command=self._extract_audio,
+        ).pack(side="left")
 
         # --- Model + Language row ---
         opt_frame = tk.Frame(self)
@@ -147,6 +173,46 @@ class App(tk.Tk):
             state="disabled" if running else "normal"
         ))
 
+    def _add_to_files(self, path: str):
+        """Append a path to the Files entry (thread-safe)."""
+        def _write():
+            current = self.file_entry.get().strip()
+            self.file_entry.delete(0, "end")
+            self.file_entry.insert(0, (current + ";" + path) if current else path)
+        self.after(0, _write)
+
+    # ------------------------------------------------------------------
+    def _extract_video(self):
+        url = self.url_entry.get().strip()
+        if not url:
+            self._log("Please enter a URL first.")
+            return
+        self._set_running(True)
+        threading.Thread(
+            target=self._run_extract, args=(url, False), daemon=True
+        ).start()
+
+    def _extract_audio(self):
+        url = self.url_entry.get().strip()
+        if not url:
+            self._log("Please enter a URL first.")
+            return
+        self._set_running(True)
+        threading.Thread(
+            target=self._run_extract, args=(url, True), daemon=True
+        ).start()
+
+    def _run_extract(self, url: str, audio_only: bool):
+        try:
+            dest = _yt_download(url, audio_only, self._log)
+            if dest:
+                self._add_to_files(dest)
+                self._log(f"Downloaded → {dest}")
+        except Exception as exc:
+            self._log(f"Error: {exc}")
+        finally:
+            self._set_running(False)
+
     # ------------------------------------------------------------------
     def _start(self):
         file_val = self.file_entry.get().strip()
@@ -189,16 +255,14 @@ class App(tk.Tk):
                         output = os.path.splitext(path)[0] + ".txt"
                         jobs.append((path, output, False))
 
-            # URL
+            # URL — download then transcribe
             if url_val:
                 output_name = url_to_filename(url_val)
                 output_path = os.path.join(os.getcwd(), output_name)
-                tmp_dl = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-                tmp_dl.close()
-                if not download_url(url_val, tmp_dl.name, self._log):
-                    os.remove(tmp_dl.name)
+                dest = _yt_download(url_val, False, self._log)
+                if not dest:
                     return
-                jobs.append((tmp_dl.name, output_path, True))
+                jobs.append((dest, output_path, True))
 
             for input_path, output_path, is_temp in jobs:
                 self._log(f"\n--- {os.path.basename(input_path)} ---")
