@@ -40,6 +40,21 @@ def url_to_filename(url: str) -> str:
     return encoded[-12:] + ".txt"
 
 
+_VIDEO_QUALITIES = {
+    "Best":  None,
+    "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
+    "720p":  "bestvideo[height<=720]+bestaudio/best[height<=720]",
+    "480p":  "bestvideo[height<=480]+bestaudio/best[height<=480]",
+    "360p":  "bestvideo[height<=360]+bestaudio/best[height<=360]",
+}
+
+_AUDIO_QUALITIES = {
+    "Best": "0",
+    "320k": "320K",
+    "192k": "192K",
+    "128k": "128K",
+}
+
 _DIRECT_EXTS = {
     ".mp3", ".mp4", ".wav", ".m4a", ".mkv", ".avi", ".mov",
     ".flac", ".ogg", ".opus", ".webm", ".aac", ".wma",
@@ -67,9 +82,10 @@ def _direct_download(url: str, log) -> str | None:
     return dest
 
 
-def _yt_download(url: str, fmt: str, log) -> str | None:
+def _yt_download(url: str, fmt: str, quality: str, log) -> str | None:
     """
     Download from a URL in the requested format: "mp4", "webm", or "mp3".
+    quality is a key from _VIDEO_QUALITIES or _AUDIO_QUALITIES.
     Direct file URLs are fetched with urllib; everything else uses yt-dlp.
     Returns the local file path, or None on failure.
     """
@@ -78,15 +94,19 @@ def _yt_download(url: str, fmt: str, log) -> str | None:
     if _is_direct_url(url):
         return _direct_download(url, log)
 
-    log(f"Extracting {fmt.upper()} from URL...")
+    log(f"Extracting {fmt.upper()} ({quality}) from URL...")
 
     tmpdir = tempfile.mkdtemp()
     out_template = os.path.join(tmpdir, "%(title)s.%(ext)s")
 
     base_args = ["-o", out_template, "--no-playlist", url]
     if fmt == "mp3":
-        base_args += ["--extract-audio", "--audio-format", "mp3"]
+        aq = _AUDIO_QUALITIES.get(quality, "0")
+        base_args += ["--extract-audio", "--audio-format", "mp3", "--audio-quality", aq]
     else:
+        fmt_selector = _VIDEO_QUALITIES.get(quality)
+        if fmt_selector:
+            base_args += ["-f", fmt_selector]
         base_args += ["--merge-output-format", fmt]
 
     # Try yt-dlp executable first, fall back to python -m yt_dlp
@@ -144,18 +164,23 @@ class App(tk.Tk):
         tk.Button(btn_right, text="Browse…", width=15, command=self._browse).pack(
             fill="x", pady=(0, 4)
         )
-        tk.Button(
-            btn_right, text="Extract MP4 \U0001f53b", width=15,
-            command=lambda: self._run_extract_urls("mp4"),
-        ).pack(fill="x", pady=(0, 4))
-        tk.Button(
-            btn_right, text="Extract WEBM \U0001f53b", width=15,
-            command=lambda: self._run_extract_urls("webm"),
-        ).pack(fill="x", pady=(0, 4))
-        tk.Button(
-            btn_right, text="Extract MP3 \U0001f53b", width=15,
-            command=lambda: self._run_extract_urls("mp3"),
-        ).pack(fill="x")
+        for fmt, qualities in [
+            ("mp4",  list(_VIDEO_QUALITIES)),
+            ("webm", list(_VIDEO_QUALITIES)),
+            ("mp3",  list(_AUDIO_QUALITIES)),
+        ]:
+            mb = tk.Menubutton(
+                btn_right, text=f"Extract {fmt.upper()} \U0001f53b",
+                width=15, relief="raised", bd=2,
+            )
+            menu = tk.Menu(mb, tearoff=False)
+            mb["menu"] = menu
+            for q in qualities:
+                menu.add_command(
+                    label=q,
+                    command=lambda f=fmt, q=q: self._run_extract_urls(f, q),
+                )
+            mb.pack(fill="x", pady=(0, 4))
 
         # --- Middle: model + language + transcribe + clear on one row ---
         opt_frame = tk.Frame(self)
@@ -317,21 +342,21 @@ class App(tk.Tk):
         ))
 
     # ------------------------------------------------------------------
-    def _run_extract_urls(self, fmt: str):
+    def _run_extract_urls(self, fmt: str, quality: str = "Best"):
         urls = [l for l in self._get_input_lines() if _is_url(l)]
         if not urls:
             self._log("No URL found in the input. Enter a URL (http/https) on its own line.")
             return
         self._set_running(True)
         threading.Thread(
-            target=self._do_extract_urls, args=(urls, fmt), daemon=True
+            target=self._do_extract_urls, args=(urls, fmt, quality), daemon=True
         ).start()
 
-    def _do_extract_urls(self, urls: list[str], fmt: str):
+    def _do_extract_urls(self, urls: list[str], fmt: str, quality: str):
         try:
             mapping = {}
             for url in urls:
-                dest = _yt_download(url, fmt, self._log)
+                dest = _yt_download(url, fmt, quality, self._log)
                 if dest:
                     mapping[url] = dest
                     self._log(f"Downloaded → {dest}")
@@ -379,7 +404,7 @@ class App(tk.Tk):
                 if _is_url(inp):
                     output_name = url_to_filename(inp)
                     output_path = os.path.abspath(os.path.join(os.getcwd(), output_name))
-                    dest = _yt_download(inp, "mp4", self._log)
+                    dest = _yt_download(inp, "mp4", "Best", self._log)
                     if dest:
                         jobs.append((dest, output_path, True))
                 else:
