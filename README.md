@@ -1,3 +1,11 @@
+```
+██╗    ██╗██╗  ██╗██╗███████╗██████╗ ███████╗██████╗
+██║    ██║██║  ██║██║██╔════╝██╔══██╗██╔════╝██╔══██╗
+██║ █╗ ██║███████║██║███████╗██████╔╝█████╗  ██████╔╝
+██║███╗██║██╔══██║██║╚════██║██╔═══╝ ██╔══╝  ██╔══██╗
+╚███╔███╔╝██║  ██║██║███████║██║     ███████╗██║  ██║
+ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝
+```
 # Whisper Audio/Video Transcription
 
 Transcribe audio and video files to text using OpenAI's Whisper speech-to-text model, running locally. Supports batch processing of multiple files in one command. Automatically uses CUDA GPU acceleration when available, and falls back to CPU otherwise.
