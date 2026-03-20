@@ -115,42 +115,44 @@ def _yt_download(url: str, audio_only: bool, log) -> str | None:
     return dest
 
 
+def _is_url(text: str) -> bool:
+    return text.startswith("http://") or text.startswith("https://")
+
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Whisper Transcription")
         self.resizable(True, True)
         self.minsize(640, 480)
-        self._timer_len = 0  # length of the current live status value
+        self._timer_len = 0
         self._build_ui()
 
     def _build_ui(self):
         pad = {"padx": 10, "pady": 4}
 
-        # --- Files row ---
-        file_frame = tk.Frame(self)
-        file_frame.pack(fill="x", **pad)
-        tk.Label(file_frame, text="Files:", width=8, anchor="w").pack(side="left")
-        self.file_entry = tk.Entry(file_frame)
-        self.file_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
-        tk.Button(file_frame, text="Browse…", command=self._browse).pack(side="left")
+        # --- Top: input text (left) + action buttons (right) ---
+        top_frame = tk.Frame(self)
+        top_frame.pack(fill="x", **pad)
 
-        # --- URL row ---
-        url_frame = tk.Frame(self)
-        url_frame.pack(fill="x", **pad)
-        tk.Label(url_frame, text="URL:", width=8, anchor="w").pack(side="left")
-        self.url_entry = tk.Entry(url_frame)
-        self.url_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        self.input_text = tk.Text(top_frame, height=5, wrap="none", undo=True)
+        self.input_text.pack(side="left", fill="both", expand=True, padx=(0, 6))
+
+        btn_right = tk.Frame(top_frame)
+        btn_right.pack(side="left", fill="y")
+        tk.Button(btn_right, text="Browse…", width=16, command=self._browse).pack(
+            fill="x", pady=(0, 4)
+        )
         tk.Button(
-            url_frame, text="Extract Video \U0001f53b",
+            btn_right, text="Extract Video \U0001f53b", width=16,
             command=self._extract_video,
-        ).pack(side="left", padx=(0, 4))
+        ).pack(fill="x", pady=(0, 4))
         tk.Button(
-            url_frame, text="Extract Audio \U0001f53b",
+            btn_right, text="Extract Audio \U0001f53b", width=16,
             command=self._extract_audio,
-        ).pack(side="left")
+        ).pack(fill="x")
 
-        # --- Model + Language row ---
+        # --- Middle: model + language + transcribe + clear on one row ---
         opt_frame = tk.Frame(self)
         opt_frame.pack(fill="x", **pad)
 
@@ -166,25 +168,27 @@ class App(tk.Tk):
         ttk.Combobox(
             opt_frame, textvariable=self.lang_var,
             values=list(LANGUAGES.keys()), state="readonly", width=14,
-        ).pack(side="left", padx=4)
+        ).pack(side="left", padx=(4, 16))
 
-        # --- Buttons row ---
-        btn_frame = tk.Frame(self)
-        btn_frame.pack(fill="x", **pad)
         self.run_btn = tk.Button(
-            btn_frame, text="Transcribe", width=14,
+            opt_frame, text="Transcribe", width=14,
             command=self._start, bg="#1a73e8", fg="white",
         )
         self.run_btn.pack(side="left", padx=(0, 8))
-        tk.Button(btn_frame, text="Clear", width=8, command=self._clear).pack(side="left")
+        tk.Button(opt_frame, text="Clear", width=8, command=self._clear).pack(side="left")
 
-        # --- Log area ---
+        # --- Bottom: full-width status log ---
         self.log_box = scrolledtext.ScrolledText(
-            self, wrap="word", state="disabled", height=16,
+            self, wrap="word", state="disabled",
         )
         self.log_box.pack(fill="both", expand=True, padx=10, pady=(4, 10))
 
     # ------------------------------------------------------------------
+    def _get_input_lines(self) -> list[str]:
+        """Return non-empty, stripped lines from the input text box."""
+        raw = self.input_text.get("1.0", "end").splitlines()
+        return [l.strip() for l in raw if l.strip()]
+
     def _browse(self):
         paths = filedialog.askopenfilenames(
             title="Select audio/video files",
@@ -193,13 +197,29 @@ class App(tk.Tk):
                 ("All files", "*.*"),
             ],
         )
-        if paths:
-            self.file_entry.delete(0, "end")
-            self.file_entry.insert(0, ";".join(paths))
+        for path in paths:
+            self._append_input_line(path)
+
+    def _append_input_line(self, text: str):
+        """Append a new line to the input text box (thread-safe)."""
+        def _write():
+            content = self.input_text.get("1.0", "end-1c")
+            if content and not content.endswith("\n"):
+                self.input_text.insert("end", "\n")
+            self.input_text.insert("end", text)
+        self.after(0, _write)
+
+    def _replace_url_lines(self, mapping: dict[str, str]):
+        """Replace URL lines with their downloaded file paths (thread-safe)."""
+        def _write():
+            lines = self.input_text.get("1.0", "end").splitlines()
+            new_lines = [mapping.get(l.strip(), l) for l in lines]
+            self.input_text.delete("1.0", "end")
+            self.input_text.insert("1.0", "\n".join(new_lines))
+        self.after(0, _write)
 
     def _clear(self):
-        self.file_entry.delete(0, "end")
-        self.url_entry.delete(0, "end")
+        self.input_text.delete("1.0", "end")
         self.log_box.config(state="normal")
         self.log_box.delete("1.0", "end")
         self.log_box.config(state="disabled")
@@ -207,7 +227,6 @@ class App(tk.Tk):
     # --- Log helpers (all thread-safe via after) ----------------------
 
     def _log(self, msg: str):
-        """Append a line to the log box."""
         def _write():
             self.log_box.config(state="normal")
             self.log_box.insert("end", msg + "\n")
@@ -216,7 +235,6 @@ class App(tk.Tk):
         self.after(0, _write)
 
     def _log_inline(self, msg: str):
-        """Append text without a trailing newline; resets timer length for later updates."""
         def _write():
             self.log_box.config(state="normal")
             self.log_box.insert("end", msg)
@@ -226,7 +244,6 @@ class App(tk.Tk):
         self.after(0, _write)
 
     def _log_update_inline(self, val: str):
-        """Overwrite the live value by counting back from the end (before implicit newline)."""
         def _write():
             self.log_box.config(state="normal")
             if self._timer_len > 0:
@@ -238,7 +255,6 @@ class App(tk.Tk):
         self.after(0, _write)
 
     def _log_finish_inline(self, val: str):
-        """Finalize the inline status line with val and a newline."""
         def _write():
             self.log_box.config(state="normal")
             if self._timer_len > 0:
@@ -250,13 +266,8 @@ class App(tk.Tk):
         self.after(0, _write)
 
     def _run_with_timer(self, fn, prefix: str, done_text: str = "Done"):
-        """
-        Run fn() (blocking, call from worker thread) while showing a live
-        elapsed-time counter in the log box. Returns fn's result.
-        """
         stop_event = threading.Event()
         start_time = time.time()
-
         self._log_inline(prefix)
 
         def _tick():
@@ -267,19 +278,13 @@ class App(tk.Tk):
             self.after(100, _tick)
 
         self.after(100, _tick)
-
         result = fn()
-
         stop_event.set()
-        time.sleep(0.15)  # let any pending tick see the flag before we finalize
+        time.sleep(0.15)
         self._log_finish_inline(done_text)
         return result
 
     def _type_text(self, text: str, delay: int = 60):
-        """
-        Type text word-by-word into the log box.
-        Blocks the calling (worker) thread until typing is complete.
-        """
         done_event = threading.Event()
         words = text.split(" ")
 
@@ -306,41 +311,33 @@ class App(tk.Tk):
             state="disabled" if running else "normal"
         ))
 
-    def _add_to_files(self, path: str):
-        """Append a path to the Files entry (thread-safe)."""
-        def _write():
-            current = self.file_entry.get().strip()
-            self.file_entry.delete(0, "end")
-            self.file_entry.insert(0, (current + ";" + path) if current else path)
-        self.after(0, _write)
-
     # ------------------------------------------------------------------
     def _extract_video(self):
-        url = self.url_entry.get().strip()
-        if not url:
-            self._log("Please enter a URL first.")
-            return
-        self._set_running(True)
-        threading.Thread(
-            target=self._run_extract, args=(url, False), daemon=True
-        ).start()
+        self._run_extract_urls(audio_only=False)
 
     def _extract_audio(self):
-        url = self.url_entry.get().strip()
-        if not url:
-            self._log("Please enter a URL first.")
+        self._run_extract_urls(audio_only=True)
+
+    def _run_extract_urls(self, audio_only: bool):
+        urls = [l for l in self._get_input_lines() if _is_url(l)]
+        if not urls:
+            self._log("No URL found in the input. Enter a URL (http/https) on its own line.")
             return
         self._set_running(True)
         threading.Thread(
-            target=self._run_extract, args=(url, True), daemon=True
+            target=self._do_extract_urls, args=(urls, audio_only), daemon=True
         ).start()
 
-    def _run_extract(self, url: str, audio_only: bool):
+    def _do_extract_urls(self, urls: list[str], audio_only: bool):
         try:
-            dest = _yt_download(url, audio_only, self._log)
-            if dest:
-                self._add_to_files(dest)
-                self._log(f"Downloaded → {dest}")
+            mapping = {}
+            for url in urls:
+                dest = _yt_download(url, audio_only, self._log)
+                if dest:
+                    mapping[url] = dest
+                    self._log(f"Downloaded → {dest}")
+            if mapping:
+                self._replace_url_lines(mapping)
         except Exception as exc:
             self._log(f"Error: {exc}")
         finally:
@@ -348,11 +345,9 @@ class App(tk.Tk):
 
     # ------------------------------------------------------------------
     def _start(self):
-        file_val = self.file_entry.get().strip()
-        url_val = self.url_entry.get().strip()
-
-        if not file_val and not url_val:
-            self._log("Please select file(s) or enter a URL.")
+        inputs = self._get_input_lines()
+        if not inputs:
+            self._log("Please enter file path(s) or URL(s), one per line.")
             return
 
         model_name = self.model_var.get()
@@ -361,11 +356,11 @@ class App(tk.Tk):
         self._set_running(True)
         threading.Thread(
             target=self._run,
-            args=(file_val, url_val, model_name, language),
+            args=(inputs, model_name, language),
             daemon=True,
         ).start()
 
-    def _run(self, file_val: str, url_val: str, model_name: str, language):
+    def _run(self, inputs: list[str], model_name: str, language):
         import whisper
 
         try:
@@ -379,23 +374,22 @@ class App(tk.Tk):
             model = whisper.load_model(model_name, device=device)
             self._log_finish_inline("Model ready.")
 
-            # Collect jobs: list of (input_path, output_path, is_temp)
+            # Build job list: (input_path, output_path, is_temp)
             jobs = []
+            for inp in inputs:
+                if _is_url(inp):
+                    output_name = url_to_filename(inp)
+                    output_path = os.path.abspath(os.path.join(os.getcwd(), output_name))
+                    dest = _yt_download(inp, False, self._log)
+                    if dest:
+                        jobs.append((dest, output_path, True))
+                else:
+                    output = os.path.abspath(os.path.splitext(inp)[0] + ".txt")
+                    jobs.append((inp, output, False))
 
-            if file_val:
-                for path in file_val.split(";"):
-                    path = path.strip()
-                    if path:
-                        output = os.path.abspath(os.path.splitext(path)[0] + ".txt")
-                        jobs.append((path, output, False))
-
-            if url_val:
-                output_name = url_to_filename(url_val)
-                output_path = os.path.abspath(os.path.join(os.getcwd(), output_name))
-                dest = _yt_download(url_val, False, self._log)
-                if not dest:
-                    return
-                jobs.append((dest, output_path, True))
+            if not jobs:
+                self._log("No valid inputs to transcribe.")
+                return
 
             start_time = time.time()
 
