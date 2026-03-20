@@ -67,9 +67,9 @@ def _direct_download(url: str, log) -> str | None:
     return dest
 
 
-def _yt_download(url: str, audio_only: bool, log) -> str | None:
+def _yt_download(url: str, fmt: str, log) -> str | None:
     """
-    Download video or audio-only from a URL.
+    Download from a URL in the requested format: "mp4", "webm", or "mp3".
     Direct file URLs are fetched with urllib; everything else uses yt-dlp.
     Returns the local file path, or None on failure.
     """
@@ -78,15 +78,16 @@ def _yt_download(url: str, audio_only: bool, log) -> str | None:
     if _is_direct_url(url):
         return _direct_download(url, log)
 
-    kind = "audio" if audio_only else "video"
-    log(f"Extracting {kind} from URL...")
+    log(f"Extracting {fmt.upper()} from URL...")
 
     tmpdir = tempfile.mkdtemp()
     out_template = os.path.join(tmpdir, "%(title)s.%(ext)s")
 
     base_args = ["-o", out_template, "--no-playlist", url]
-    if audio_only:
+    if fmt == "mp3":
         base_args += ["--extract-audio", "--audio-format", "mp3"]
+    else:
+        base_args += ["--merge-output-format", fmt]
 
     # Try yt-dlp executable first, fall back to python -m yt_dlp
     for cmd in (["yt-dlp"] + base_args, [sys.executable, "-m", "yt_dlp"] + base_args):
@@ -135,21 +136,25 @@ class App(tk.Tk):
         top_frame = tk.Frame(self)
         top_frame.pack(fill="x", **pad)
 
-        self.input_text = tk.Text(top_frame, height=5, wrap="none", undo=True)
+        self.input_text = tk.Text(top_frame, height=7, wrap="none", undo=True)
         self.input_text.pack(side="left", fill="both", expand=True, padx=(0, 6))
 
         btn_right = tk.Frame(top_frame)
         btn_right.pack(side="left", fill="y")
-        tk.Button(btn_right, text="Browse…", width=16, command=self._browse).pack(
+        tk.Button(btn_right, text="Browse…", width=15, command=self._browse).pack(
             fill="x", pady=(0, 4)
         )
         tk.Button(
-            btn_right, text="Extract Video \U0001f53b", width=16,
-            command=self._extract_video,
+            btn_right, text="Extract MP4 \U0001f53b", width=15,
+            command=lambda: self._run_extract_urls("mp4"),
         ).pack(fill="x", pady=(0, 4))
         tk.Button(
-            btn_right, text="Extract Audio \U0001f53b", width=16,
-            command=self._extract_audio,
+            btn_right, text="Extract WEBM \U0001f53b", width=15,
+            command=lambda: self._run_extract_urls("webm"),
+        ).pack(fill="x", pady=(0, 4))
+        tk.Button(
+            btn_right, text="Extract MP3 \U0001f53b", width=15,
+            command=lambda: self._run_extract_urls("mp3"),
         ).pack(fill="x")
 
         # --- Middle: model + language + transcribe + clear on one row ---
@@ -170,12 +175,12 @@ class App(tk.Tk):
             values=list(LANGUAGES.keys()), state="readonly", width=14,
         ).pack(side="left", padx=(4, 16))
 
+        tk.Button(opt_frame, text="Clear", width=8, command=self._clear).pack(side="right")
         self.run_btn = tk.Button(
             opt_frame, text="Transcribe", width=14,
             command=self._start, bg="#1a73e8", fg="white",
         )
-        self.run_btn.pack(side="left", padx=(0, 8))
-        tk.Button(opt_frame, text="Clear", width=8, command=self._clear).pack(side="left")
+        self.run_btn.pack(side="right", padx=(0, 8))
 
         # --- Bottom: full-width status log ---
         self.log_box = scrolledtext.ScrolledText(
@@ -312,27 +317,21 @@ class App(tk.Tk):
         ))
 
     # ------------------------------------------------------------------
-    def _extract_video(self):
-        self._run_extract_urls(audio_only=False)
-
-    def _extract_audio(self):
-        self._run_extract_urls(audio_only=True)
-
-    def _run_extract_urls(self, audio_only: bool):
+    def _run_extract_urls(self, fmt: str):
         urls = [l for l in self._get_input_lines() if _is_url(l)]
         if not urls:
             self._log("No URL found in the input. Enter a URL (http/https) on its own line.")
             return
         self._set_running(True)
         threading.Thread(
-            target=self._do_extract_urls, args=(urls, audio_only), daemon=True
+            target=self._do_extract_urls, args=(urls, fmt), daemon=True
         ).start()
 
-    def _do_extract_urls(self, urls: list[str], audio_only: bool):
+    def _do_extract_urls(self, urls: list[str], fmt: str):
         try:
             mapping = {}
             for url in urls:
-                dest = _yt_download(url, audio_only, self._log)
+                dest = _yt_download(url, fmt, self._log)
                 if dest:
                     mapping[url] = dest
                     self._log(f"Downloaded → {dest}")
@@ -380,7 +379,7 @@ class App(tk.Tk):
                 if _is_url(inp):
                     output_name = url_to_filename(inp)
                     output_path = os.path.abspath(os.path.join(os.getcwd(), output_name))
-                    dest = _yt_download(inp, False, self._log)
+                    dest = _yt_download(inp, "mp4", self._log)
                     if dest:
                         jobs.append((dest, output_path, True))
                 else:
