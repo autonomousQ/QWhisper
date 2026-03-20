@@ -154,6 +154,8 @@ class App(tk.Tk):
         pad = {"padx": 10, "pady": 4}
 
         # --- Top: input text (left) + action buttons (right) ---
+        tk.Label(self, text="Files / URLs to transcribe (one per line)",
+                 anchor="w").pack(fill="x", padx=10, pady=(8, 0))
         top_frame = tk.Frame(self)
         top_frame.pack(fill="x", **pad)
 
@@ -184,6 +186,7 @@ class App(tk.Tk):
             mb.pack(fill="x", pady=(0, 4))
 
         # --- Middle: full-width status log ---
+        tk.Label(self, text="Output", anchor="w").pack(fill="x", padx=10, pady=(4, 0))
         self.log_box = scrolledtext.ScrolledText(
             self, wrap="word", state="disabled",
         )
