@@ -16,10 +16,33 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 import torch
 import whisper
+
+
+def live_timer(stop_event: threading.Event, label: str) -> None:
+    """Print elapsed time in-place until stop_event is set."""
+    start = time.time()
+    while not stop_event.wait(0.1):
+        elapsed = time.time() - start
+        sys.stdout.write(f"\r{label}{elapsed:.1f}s")
+        sys.stdout.flush()
+    elapsed = time.time() - start
+    sys.stdout.write(f"\r{label}{elapsed:.1f}s\n")
+    sys.stdout.flush()
+
+
+def type_text(text: str, delay: float = 0.01) -> None:
+    """Print text character by character."""
+    for char in text:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(delay)
+    sys.stdout.write("\n")
+    sys.stdout.flush()
 
 
 def extract_audio(input_path: str, audio_path: str) -> None:
@@ -58,8 +81,12 @@ def transcribe_audio(
     if language:
         transcribe_options["language"] = language
 
-    print("Transcribing...")
+    stop_event = threading.Event()
+    timer = threading.Thread(target=live_timer, args=(stop_event, "Transcribing... "), daemon=True)
+    timer.start()
     result = model.transcribe(audio_path, **transcribe_options)
+    stop_event.set()
+    timer.join()
     return result
 
 
@@ -125,6 +152,7 @@ def main() -> None:
             extract_audio(input_path, audio_path)
             result = transcribe_audio(model, audio_path, language=args.language, device=device)
             save_transcription(result, output_path)
+            type_text(result.get("text", "").strip())
         finally:
             if os.path.exists(audio_path):
                 os.remove(audio_path)
