@@ -326,11 +326,9 @@ class App(tk.Tk):
             device_label = f"GPU ({torch.cuda.get_device_name(0)})" if device == "cuda" else "CPU"
             self._log(f"> Device: {device_label}")
 
-            model = self._run_with_timer(
-                lambda: whisper.load_model(model_name, device=device),
-                prefix=f"> Loading model '{model_name}' (downloads if needed)... ",
-                done_text="Model ready.",
-            )
+            self._log_inline(f"> Loading model '{model_name}' (downloads if needed)... ")
+            model = whisper.load_model(model_name, device=device)
+            self._log_finish_inline("Model ready.")
 
             # Collect jobs: list of (input_path, output_path, is_temp)
             jobs = []
@@ -374,7 +372,7 @@ class App(tk.Tk):
                         f.write(text + "\n")
                     self._log_finish_inline("Done")
 
-                    self._log("Transcript:")
+                    self._log("> Transcript:")
                     self._type_text(text)
 
                 finally:

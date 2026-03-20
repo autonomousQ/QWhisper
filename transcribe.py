@@ -55,6 +55,26 @@ def type_text(text: str, delay: float = 0.01) -> None:
     sys.stdout.flush()
 
 
+def transcribe_audio(
+    model: whisper.Whisper,
+    audio_path: str,
+    language: str | None = None,
+    device: str = "cpu",
+) -> dict:
+    """Transcribe audio using a pre-loaded Whisper model (no terminal output)."""
+    opts: dict = {"fp16": device == "cuda"}
+    if language:
+        opts["language"] = language
+    return model.transcribe(audio_path, **opts)
+
+
+def save_transcription(result: dict, output_path: str) -> None:
+    """Save transcription text to a file."""
+    text = result.get("text", "").strip()
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(text + "\n")
+
+
 def extract_audio(input_path: str, audio_path: str) -> None:
     """Extract/convert audio from a video or audio file using FFmpeg."""
     if not os.path.isfile(input_path):
@@ -152,7 +172,7 @@ def main() -> None:
             sys.stdout.flush()
 
             # Type out transcript
-            print("Transcript:")
+            print("> Transcript:")
             type_text(text)
 
         finally:
