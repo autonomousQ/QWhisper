@@ -78,7 +78,7 @@ class App(tk.Tk):
         self.title("Whisper Transcription")
         self.resizable(True, True)
         self.minsize(640, 480)
-        self._timer_index = None  # text index where live status value starts
+        self._timer_len = 0  # length of the current live status value
         self._build_ui()
 
     def _build_ui(self):
@@ -173,22 +173,23 @@ class App(tk.Tk):
         self.after(0, _write)
 
     def _log_inline(self, msg: str):
-        """Append text without a trailing newline; record index for later updates."""
+        """Append text without a trailing newline; resets timer length for later updates."""
         def _write():
             self.log_box.config(state="normal")
             self.log_box.insert("end", msg)
-            self._timer_index = self.log_box.index("end")
+            self._timer_len = 0
             self.log_box.see("end")
             self.log_box.config(state="disabled")
         self.after(0, _write)
 
     def _log_update_inline(self, val: str):
-        """Overwrite everything after the recorded index (no newline)."""
+        """Overwrite the live value by counting back from the end (before implicit newline)."""
         def _write():
             self.log_box.config(state="normal")
-            if self._timer_index:
-                self.log_box.delete(self._timer_index, "end")
+            if self._timer_len > 0:
+                self.log_box.delete(f"end - {self._timer_len + 1}c", "end - 1c")
             self.log_box.insert("end", val)
+            self._timer_len = len(val)
             self.log_box.see("end")
             self.log_box.config(state="disabled")
         self.after(0, _write)
@@ -197,10 +198,10 @@ class App(tk.Tk):
         """Finalize the inline status line with val and a newline."""
         def _write():
             self.log_box.config(state="normal")
-            if self._timer_index:
-                self.log_box.delete(self._timer_index, "end")
+            if self._timer_len > 0:
+                self.log_box.delete(f"end - {self._timer_len + 1}c", "end - 1c")
             self.log_box.insert("end", val + "\n")
-            self._timer_index = None
+            self._timer_len = 0
             self.log_box.see("end")
             self.log_box.config(state="disabled")
         self.after(0, _write)
