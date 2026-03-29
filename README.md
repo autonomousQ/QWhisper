@@ -1,11 +1,11 @@
 ```
-██╗    ██╗██╗  ██╗██╗███████╗██████╗ ███████╗██████╗
-██║    ██║██║  ██║██║██╔════╝██╔══██╗██╔════╝██╔══██╗
-██║ █╗ ██║███████║██║███████╗██████╔╝█████╗  ██████╔╝
-██║███╗██║██╔══██║██║╚════██║██╔═══╝ ██╔══╝  ██╔══██╗
-╚███╔███╔╝██║  ██║██║███████║██║     ███████╗██║  ██║
- ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝
-Whisper AI Audio/Video Extractor & Transcription
+ ██████╗ ██╗    ██╗██╗  ██╗██╗███████╗██████╗ ███████╗██████╗
+██╔═══██╗██║    ██║██║  ██║██║██╔════╝██╔══██╗██╔════╝██╔══██╗
+██║   ██║██║ █╗ ██║███████║██║███████╗██████╔╝█████╗  ██████╔╝
+██║▄▄ ██║██║███╗██║██╔══██║██║╚════██║██╔═══╝ ██╔══╝  ██╔══██╗
+╚██████╔╝╚███╔███╔╝██║  ██║██║███████║██║     ███████╗██║  ██║
+ ╚══▀▀═╝  ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝
+QWhisper AI Audio/Video Extractor & Transcription
 ```
 Transcribe audio and video files to text using OpenAI's Whisper speech-to-text model, running locally. Supports batch processing of multiple files in one command. Automatically uses CUDA GPU acceleration when available, and falls back to CPU otherwise.
 
@@ -46,8 +46,8 @@ Supported formats: `.mp4`, `.mov`, `.mkv`, `.avi`, `.mp3`, `.wav`, `.m4a`, `.fla
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/tommykho/whisper.git
-cd whisper
+git clone https://github.com/AutonomousQ/QWhisper.git
+cd QWhisper
 ```
 
 ### 2. Install FFmpeg
@@ -78,7 +78,7 @@ pip install -r requirements.txt
 ## Project Structure
 
 ```
-whisper/
+QWhisper/
 ├── transcribe.py        # CLI script
 ├── transcribe-ui.py     # Desktop GUI (tkinter)
 ├── requirements.txt
