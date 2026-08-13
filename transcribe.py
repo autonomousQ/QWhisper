@@ -93,7 +93,7 @@ def extract_audio(input_path: str, audio_path: str) -> None:
         audio_path,
     ]
 
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(command, capture_output=True)
     if result.returncode != 0:
         print("FFmpeg error:", result.stderr.decode(), file=sys.stderr)
         sys.exit(1)

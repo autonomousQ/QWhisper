@@ -113,7 +113,7 @@ def _yt_download(url: str, fmt: str, quality: str, log) -> str | None:
     # Try yt-dlp executable first, fall back to python -m yt_dlp
     for cmd in (["yt-dlp"] + base_args, [sys.executable, "-m", "yt_dlp"] + base_args):
         try:
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run(cmd, capture_output=True)
             break
         except FileNotFoundError:
             continue
