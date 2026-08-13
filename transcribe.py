@@ -111,8 +111,7 @@ def main() -> None:
     parser.add_argument(
         "--model",
         default="base",
-        choices=["tiny", "tiny.en", "base", "base.en", "small", "small.en",
-                 "medium", "medium.en", "large", "large-v2", "large-v3"],
+        choices=whisper.available_models(),
         help="Whisper model to use (default: base). Use 'large' for best multilingual support.",
     )
     parser.add_argument(
