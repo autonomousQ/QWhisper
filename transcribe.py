@@ -157,7 +157,7 @@ def main() -> None:
                 transcribe_options["language"] = args.language
 
             result = run_with_timer(
-                lambda: model.transcribe(audio_path, **transcribe_options),
+                lambda path=audio_path, opts=transcribe_options: model.transcribe(path, **opts),
                 prefix=f"> Transcribing '{os.path.basename(input_path)}'... ",
             )
 
