@@ -16,11 +16,12 @@ import tkinter as tk
 from tkinter import filedialog, ttk, scrolledtext
 
 import torch
+import whisper
 
 from transcribe import extract_audio
 
 
-MODELS = ["tiny", "base", "small", "medium", "large", "large-v2", "large-v3"]
+MODELS = whisper.available_models()
 DEFAULT_MODEL = "small"
 
 LANGUAGES = {
