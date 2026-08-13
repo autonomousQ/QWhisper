@@ -488,7 +488,7 @@ class App(tk.Tk):
 
                     wav_path = tmp_wav.name
                     result = self._run_with_timer(
-                        lambda: model.transcribe(wav_path, **transcribe_opts),
+                        lambda path=wav_path, opts=transcribe_opts: model.transcribe(path, **opts),
                         prefix=f"> Transcribing '{os.path.basename(input_path)}'... ",
                     )
 
