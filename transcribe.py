@@ -123,7 +123,7 @@ def main() -> None:
 
     # --language is only supported by large and turbo models
     if args.language and not args.model.startswith(("turbo", "large")):
-        if args.language == "english":
+        if args.language.lower() in ("en", "english"):
             appended_model = args.model + ".en"
             if args.model == appended_model:
                 args.language = None
