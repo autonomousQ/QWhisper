@@ -122,12 +122,13 @@ def main() -> None:
     args = parser.parse_args()
 
     # --language is only supported by large and turbo models
-    if args.language and not args.model.startswith("turbo", "large"):
+    if args.language and not args.model.startswith(("turbo", "large")):
         if args.language == "english":
-            if args.model.endswith(".en"):
+            appended_model = args.model + ".en"
+            if args.model == appended_model:
                 args.language = None
-            else:
-                args.model += ".en"       
+            elif appended_model in whisper.available_models():
+                args.model = appended_model
         else:
             print(f"Warning: --language is only supported for large/turbo models. Ignoring for model '{args.model}'.")
             args.language = None
