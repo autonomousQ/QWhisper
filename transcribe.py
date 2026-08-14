@@ -122,10 +122,15 @@ def main() -> None:
     args = parser.parse_args()
 
     # --language is only supported by large and turbo models
-    large_models = {"large", "large-v2", "large-v3", "turbo"}
-    if args.language and args.model not in large_models:
-        print(f"Warning: --language is only supported for large/turbo models. Ignoring for model '{args.model}'.")
-        args.language = None
+    if args.language and not args.model.startswith("turbo", "large"):
+        if args.language == "english":
+            if args.model.endswith(".en"):
+                args.language = None
+            else:
+                args.model += ".en"       
+        else:
+            print(f"Warning: --language is only supported for large/turbo models. Ignoring for model '{args.model}'.")
+            args.language = None
 
     print("*** START ***")
 
