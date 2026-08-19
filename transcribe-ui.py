@@ -16,23 +16,14 @@ import tkinter as tk
 from tkinter import filedialog, ttk, scrolledtext
 
 import torch
+import whisper
+from whisper.tokenizer import TO_LANGUAGE_CODE as LANGUAGES
 
 from transcribe import extract_audio
 
 
-MODELS = ["tiny", "base", "small", "medium", "large", "large-v2", "large-v3"]
+MODELS = whisper.available_models()
 DEFAULT_MODEL = "small"
-
-LANGUAGES = {
-    "Auto-detect": None,
-    "English": "en",
-    "Chinese": "zh",
-    "Japanese": "ja",
-    "French": "fr",
-    "Spanish": "es",
-    "German": "de",
-    "Korean": "ko",
-}
 
 
 def url_to_filename(url: str) -> str:
