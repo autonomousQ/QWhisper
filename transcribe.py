@@ -117,11 +117,11 @@ def main() -> None:
     parser.add_argument(
         "--language",
         default=None,
-        help="Language of the audio (e.g. 'en', 'Chinese'). Only used with large/turbo models. Auto-detected if omitted.",
+        help="Language of the audio (e.g. 'en', 'Chinese'). Non-English values are only used with large/turbo models. Auto-detected if omitted.",
     )
     args = parser.parse_args()
 
-    # --language is only supported by large and turbo models
+    # --language values other than English are only supported by large and turbo models
     if args.language and not args.model.startswith(("turbo", "large")):
         if args.language.lower() in ("en", "english"):
             appended_model = args.model + ".en"
@@ -130,7 +130,7 @@ def main() -> None:
             elif appended_model in whisper.available_models():
                 args.model = appended_model
         else:
-            print(f"Warning: --language is only supported for large/turbo models. Ignoring for model '{args.model}'.")
+            print(f"Warning: --language values other than English are only supported for large/turbo models. Ignoring for model '{args.model}'.")
             args.language = None
 
     print("*** START ***")
